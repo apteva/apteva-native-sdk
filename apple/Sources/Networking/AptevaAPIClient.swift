@@ -451,6 +451,23 @@ public struct AptevaAPIClient: Sendable {
         try await request("apps?project_id=\(queryValue(projectID))")
     }
 
+    /// A single mobile navigation favourite, independent of the desktop sidebar.
+    public func mobileFavouriteApp(projectID: String) async throws -> AptevaMobileFavouritePreference {
+        try await request("ui-layout/projects/\(queryValue(projectID))/surfaces/navigation.mobile-favourite")
+    }
+
+    /// Updates only this surface; concurrent layout edits are protected by revision.
+    public func updateMobileFavouriteApp(
+        projectID: String, appName: String?, revision: Int64
+    ) async throws -> AptevaMobileFavouritePreference {
+        let body = try JSONEncoder().encode(MobileFavouritePatch(value: appName.map { [$0] } ?? []))
+        return try await request(
+            "ui-layout/projects/\(queryValue(projectID))/surfaces/navigation.mobile-favourite",
+            method: "PATCH", body: body,
+            headers: ["If-Match": "\"\(revision)\""]
+        )
+    }
+
     public func dashboardWidgetSurface(projectID: String) async throws -> AptevaDashboardWidgetSurface {
         try await request("ui/surfaces/dashboard.home?project_id=\(queryValue(projectID))")
     }

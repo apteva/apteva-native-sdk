@@ -4,6 +4,14 @@ import Foundation
 import SwiftUI
 import UIKit
 
+/// Uses the same raster/SVG renderer as installed-app cards for native tab icons.
+@MainActor
+public enum AptevaAssetImageDecoder {
+    public static func image(data: Data) -> UIImage? {
+        AptevaAssetImagePayload(data: data)?.image
+    }
+}
+
 enum AptevaAssetImagePayload {
     case raster(UIImage)
     case svg(UIImage)

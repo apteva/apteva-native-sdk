@@ -54,6 +54,31 @@ final class APIKeyAuthenticationTests: XCTestCase {
         XCTAssertEqual(user.email, "ios@example.test")
     }
 
+    func testMobileFavouriteUsesAnIndependentRevisionProtectedSurface() async throws {
+        MockURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/ui-layout/projects/project-1/surfaces/navigation.mobile-favourite")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer sk-device-test")
+            if request.httpMethod == "PATCH" {
+                XCTAssertEqual(request.value(forHTTPHeaderField: "If-Match"), "\"7\"")
+                // URLSession may move the encoded body into a stream.
+                XCTAssertNotNil(request.httpBody ?? request.httpBodyStream.map { _ in Data() })
+            }
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (response, Data(#"{"value":["storage"],"revision":8}"#.utf8))
+        }
+        let client = AptevaAPIClient(baseURL: URL(string: "https://example.test")!, bearerToken: "sk-device-test", protocolClasses: [MockURLProtocol.self])
+        let fetched = try await client.mobileFavouriteApp(projectID: "project-1")
+        XCTAssertEqual(fetched.appName, "storage")
+        let saved = try await client.updateMobileFavouriteApp(projectID: "project-1", appName: nil, revision: 7)
+        XCTAssertEqual(saved.revision, 8)
+        XCTAssertEqual(String(decoding: try JSONEncoder().encode(MobileFavouritePatch(value: [])), as: UTF8.self), #"{"value":[]}"#)
+    }
+
+    func testMobileFavouriteIsEmptyByDefault() throws {
+        let preference = try JSONDecoder().decode(AptevaMobileFavouritePreference.self, from: Data(#"{"value":[],"revision":0}"#.utf8))
+        XCTAssertNil(preference.appName)
+    }
+
     func testAssetLoaderAuthenticatesOnlyTheSelectedServerOrigin() async throws {
         MockURLProtocol.handler = { request in
             if request.url?.host == "example.test" {
