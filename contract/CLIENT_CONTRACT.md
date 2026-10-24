@@ -1,6 +1,12 @@
 # Native client contract
 
-Contract version: `1.4.0`
+Contract version: `1.5.0`
+
+Native chat cards retain their existing v1 message component format. Optional
+`chat.message_action` selects a declared action endpoint; existing Conversations
+surfaces use `/message-action`. Legacy approval verdicts send message ID, action
+ID and note. Generic interactions additionally send component ID and values.
+The returned message is authoritative; unsupported versions remain read-only.
 
 Notification preview preferences use `GET`/`PUT /api/notifications/previews` with
 `{"mobile_preview":"hidden"}` or `{"mobile_preview":"content"}`. Preview

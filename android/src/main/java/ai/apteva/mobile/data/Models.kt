@@ -596,6 +596,8 @@ data class SurfaceSection(
     val item: SurfaceItem? = null,
     val fields: List<SurfaceField> = emptyList(),
     val preview: SurfacePreview? = null,
+    val component: String? = null,
+    val chat: JsonObject? = null,
 )
 
 @Serializable

@@ -45,10 +45,10 @@ swift test
 ANDROID_HOME="$HOME/Library/Android/sdk" ./gradlew :android:assembleRelease :android:testDebugUnitTest
 ```
 
-The current SDK/contract version is `1.4.0`. The canonical Git repository is
+The current SDK/contract version is `1.5.0`. The canonical Git repository is
 https://github.com/apteva/apteva-native-sdk. Apple apps consume its exact
-`1.4.0` Swift Package Manager version (Git tag `v1.4.0`). Android consumes
-`ai.apteva:native-sdk:1.4.0`; release assets include the AAR, sources, POM,
+`1.5.0` Swift Package Manager version (Git tag `v1.5.0`). Android consumes
+`ai.apteva:native-sdk:1.5.0`; release assets include the AAR, sources, POM,
 Gradle module metadata, and a ZIP of the Maven repository layout. Download and
 verify that ZIP to use a local Maven repository without a separate Maven host.
 Sibling checkouts remain available for SDK development. See `RELEASING.md` for

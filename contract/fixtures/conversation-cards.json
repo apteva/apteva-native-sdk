@@ -1,0 +1,16 @@
+{
+  "messages": [
+    {"id": 1, "role": "agent", "content": "No action is required.", "components": [
+      {"id": "alert", "version": 1, "app": "conversations", "name": "alert-card", "props": {"severity": "info", "text": "No action is required."}}
+    ]},
+    {"id": 2, "role": "agent", "content": "Approval requested: Keep the list?", "components": [
+      {"id": "approval", "version": 1, "app": "conversations", "name": "approval-card", "props": {"title": "Keep the list?", "body": "Choose what happens next.", "status": "pending", "actions": [{"id": "keep", "label": "Keep the list", "style": "primary"}, {"id": "delete", "label": "Delete the list", "style": "danger"}]}, "interaction": {"status": "pending", "blocking": true, "fields": [{"id": "note", "label": "Note", "type": "text"}], "actions": [{"id": "keep", "label": "Keep the list"}, {"id": "delete", "label": "Delete the list"}]}}
+    ]},
+    {"id": 3, "role": "system", "content": "Daily report", "components": [
+      {"version": 1, "app": "conversations", "name": "report-card", "props": {"title": "Daily report", "summary": "Checks passed.", "period": "Today", "sections": [{"heading": "Evidence", "body": "All services are healthy."}]}}
+    ]},
+    {"id": 4, "role": "agent", "content": "You can choose a tone.", "components": [
+      {"id": "tone", "version": 1, "app": "conversations", "name": "question-card", "props": {"title": "Which tone?"}, "interaction": {"status": "pending", "blocking": false, "fields": [{"id": "tone", "label": "Tone", "type": "choice", "required": true, "allow_custom": true, "options": [{"id": "brief", "label": "Brief"}]}], "actions": [{"id": "submit", "label": "Submit", "style": "primary"}, {"id": "skip", "label": "Skip", "cancel": true}]}}
+    ]}
+  ]
+}

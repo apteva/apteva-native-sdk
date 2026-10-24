@@ -84,7 +84,8 @@ public func nativeChatMessageID(_ message: NativeJSONValue, selector: String) ->
 public func nativeChatMergingSnapshot(
     _ snapshot: [NativeJSONValue],
     preserving live: [NativeJSONValue],
-    idSelector: String
+    idSelector: String,
+    baseline: [NativeJSONValue]? = nil
 ) -> [NativeJSONValue] {
     let snapshotIDs = Set(snapshot.map { nativeChatMessageID($0, selector: idSelector) })
     let overlap = live.firstIndex { snapshotIDs.contains(nativeChatMessageID($0, selector: idSelector)) } ?? 0
@@ -96,7 +97,18 @@ public func nativeChatMergingSnapshot(
     var merged: [NativeJSONValue] = []
     var indexByID: [String: Int] = [:]
 
-    for message in olderHistory + snapshot + liveTail {
+    let baselineByID = Dictionary((baseline ?? []).map { (nativeChatMessageID($0, selector: idSelector), $0) }, uniquingKeysWith: { _, newer in newer })
+    let snapshotByID = Dictionary(snapshot.map { (nativeChatMessageID($0, selector: idSelector), $0) }, uniquingKeysWith: { _, newer in newer })
+    let newerLiveTail = liveTail.filter { message in
+        let id = nativeChatMessageID(message, selector: idSelector)
+        guard let server = snapshotByID[id] else { return true }
+        if let serverRevision = Int(server.value(at: "$.revision")?.scalarString ?? ""),
+           let liveRevision = Int(message.value(at: "$.revision")?.scalarString ?? ""), serverRevision > liveRevision { return false }
+        // Only events which arrived during the request should beat its result.
+        // Otherwise an old pending approval can mask a resolved server snapshot.
+        return baseline == nil || baselineByID[id] != message
+    }
+    for message in olderHistory + snapshot + newerLiveTail {
         let id = nativeChatMessageID(message, selector: idSelector)
         guard !id.isEmpty else { continue }
         if let index = indexByID[id] {
@@ -355,6 +367,7 @@ public struct DeclaredSurfaceChatComponent: Decodable, Sendable {
     public let sendAction: String
     public let createAction: String?
     public let markSeenAction: String?
+    public let messageAction: String?
     public let conversation: DeclaredSurfaceChatConversationMapping
     public let message: DeclaredSurfaceChatMessageMapping
     public let subscription: DeclaredSurfaceSubscription?
@@ -367,6 +380,7 @@ public struct DeclaredSurfaceChatComponent: Decodable, Sendable {
         case sendAction = "send_action"
         case createAction = "create_action"
         case markSeenAction = "mark_seen_action"
+        case messageAction = "message_action"
         case conversation, message, subscription, live
     }
 }
@@ -443,9 +457,10 @@ public struct DeclaredSurfaceChatMessageMapping: Decodable, Sendable {
     public let role: String?
     public let createdAt: String?
     public let status: String?
+    public let components: String?
 
     enum CodingKeys: String, CodingKey {
-        case id, body, author, role, status
+        case id, body, author, role, status, components
         case conversationID = "conversation_id"
         case createdAt = "created_at"
     }
@@ -1480,7 +1495,10 @@ private struct DeclaredChatThreadView: View {
                         }
 
                         ForEach(renderedMessages) { message in
-                            NativeChatMessageRow(item: message.value, mapping: configuration.message)
+                            NativeChatMessageRow(item: message.value, mapping: configuration.message,
+                                                 canRespond: configuration.messageAction != nil || appName == "conversations") { card, action, values, note in
+                                try await submitCard(messageID: message.id, cardID: card.id, action: action, values: values, note: note)
+                            }
                                 .background(message.id == focusedMessageID ? AptevaPalette.accent.opacity(0.12) : .clear,
                                             in: RoundedRectangle(cornerRadius: 16))
                                 .id(message.id)
@@ -1587,6 +1605,7 @@ private struct DeclaredChatThreadView: View {
             }
         }
         do {
+            let baseline = messages
             var extraQuery: [String: String] = [:]
             if let cursor, let key = source.pagination?.requestKey { extraQuery[key] = cursor }
             let response = try await chatRequest(
@@ -1600,6 +1619,7 @@ private struct DeclaredChatThreadView: View {
             let rows = source.response.items.flatMap { response.value(at: $0)?.arrayValue } ?? []
             if prepending {
                 for row in rows.reversed() {
+                    guard !messages.contains(where: { messageID($0) == messageID(row) }) else { continue }
                     messages = nativeChatInserting(
                         row,
                         into: messages,
@@ -1611,11 +1631,14 @@ private struct DeclaredChatThreadView: View {
                 messages = nativeChatMergingSnapshot(
                     rows,
                     preserving: messages,
-                    idSelector: configuration.message.id
+                    idSelector: configuration.message.id,
+                    baseline: baseline
                 )
             }
             let cursorSelector = source.response.nextCursor ?? source.pagination?.responsePath
-            nextCursor = cursorSelector.flatMap { response.value(at: $0)?.scalarString }.flatMap { $0.isEmpty ? nil : $0 }
+            if !quietly || baseline.count <= rows.count {
+                nextCursor = cursorSelector.flatMap { response.value(at: $0)?.scalarString }.flatMap { $0.isEmpty ? nil : $0 }
+            }
             errorMessage = nil
             return true
         } catch {
@@ -1627,6 +1650,34 @@ private struct DeclaredChatThreadView: View {
     private func loadOlder() async {
         guard let nextCursor else { return }
         await loadMessages(cursor: nextCursor, prepending: true)
+    }
+
+    @MainActor
+    private func submitCard(messageID id: String, cardID: String, action: NativeChatCardAction,
+                            values: [String: NativeJSONValue], note: String) async throws {
+        guard let current = messages.first(where: { messageID($0) == id }),
+              let card = nativeChatCards(in: current, selector: configuration.message.components ?? "$.components").first(where: { $0.id == cardID }),
+              let rawID = current.value(at: configuration.message.id) else { throw NativeChatCardError.unavailable }
+        let input = try card.actionBody(messageID: rawID, action: action, values: values, note: note)
+        do {
+            let response: NativeJSONValue
+            if let actionID = configuration.messageAction, let request = surface.actions[actionID]?.request {
+                response = try await chatRequest(request, state: state, input: input, appName: appName, projectID: projectID, client: client)
+            } else if appName == "conversations" {
+                response = try await client.nativeAppJSON(appName: appName, projectID: projectID, path: "/message-action", method: "POST", body: input)
+            } else { throw NativeChatCardError.unavailable }
+            guard let updated = response.value(at: "$.message"), messageID(updated) == id else {
+                await loadMessages(quietly: true)
+                throw AptevaAPIError.invalidResponse
+            }
+            upsert(updated)
+            await onConversationChanged()
+        } catch {
+            // A concurrent decision may have won. Reconcile, never mark a
+            // decision complete optimistically, and retain the user's draft.
+            await loadMessages(quietly: true)
+            throw error
+        }
     }
 
     @MainActor
@@ -2124,6 +2175,10 @@ private struct NativeChatConversationRow: View {
 private struct NativeChatMessageRow: View {
     let item: NativeJSONValue
     let mapping: DeclaredSurfaceChatMessageMapping
+    let canRespond: Bool
+    let submit: (NativeChatCard, NativeChatCardAction, [String: NativeJSONValue], String) async throws -> Void
+
+    private var cards: [NativeChatCard] { nativeChatCards(in: item, selector: mapping.components ?? "$.components") }
 
     private var role: String { mapping.role.map { chatValue($0, in: item).lowercased() } ?? "" }
     private var outgoing: Bool { ["user", "human", "outgoing", "operator"].contains(role) }
@@ -2132,13 +2187,24 @@ private struct NativeChatMessageRow: View {
     // SwiftUI Text preserves leading newlines, which created apparently
     // random oversized gaps between otherwise adjacent turns.
     private var bodyText: String {
-        chatValue(mapping.body, in: item)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        nativeChatBody(chatValue(mapping.body, in: item), beside: cards)
     }
 
     @ViewBuilder
     var body: some View {
-        if system {
+        if !cards.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                if !bodyText.isEmpty {
+                    Text(bodyText).font(.body).textSelection(.enabled).lineSpacing(3)
+                }
+                ForEach(cards) { card in
+                    NativeChatCardView(card: card, canRespond: canRespond) { action, values, note in
+                        try await submit(card, action, values, note)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } else if system {
             Text(bodyText)
                 .font(.caption2)
                 .foregroundStyle(AptevaPalette.muted)

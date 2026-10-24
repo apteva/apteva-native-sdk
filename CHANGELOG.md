@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.0
+
+- Render native Conversations alert, approval, report and interactive question cards.
+- Preserve custom approval actions, notes, completed decisions and required inputs.
+- Reconcile completed cards after reconnect without discarding newer live events.
+- Expose matching Kotlin card semantics and Android chat surface metadata.
+- Retain authenticated notification routing and private-by-default preview settings.
+
 ## 1.4.0
 
 - Add typed, authenticated notification preview preference APIs for Swift and Kotlin.
