@@ -84,6 +84,14 @@ public struct AptevaAPIClient: Sendable {
     private let bearerToken: String?
     private let session: URLSession
     private let sseTransport: AptevaSSETransport
+    private var appInstallID: Int64?
+
+    /// Keep every native-surface/history/SSE request on the notification's install.
+    public func scopedToAppInstallation(_ id: Int64) -> AptevaAPIClient {
+        var client = self
+        client.appInstallID = id
+        return client
+    }
 
     public init(
         baseURL: URL,
@@ -179,6 +187,24 @@ public struct AptevaAPIClient: Sendable {
 
     public func mobilePushConfig() async throws -> AptevaMobilePushConfig {
         try await request("mobile/push/config")
+    }
+
+    public func userNotifications() async throws -> AptevaNotificationSnapshot {
+        try await request("notifications")
+    }
+
+    public func userNotification(id: Int64) async throws -> AptevaUserNotification {
+        guard id > 0 else { throw AptevaAPIError.invalidResponse }
+        return try await request("notifications/\(id)")
+    }
+
+    /// Server acknowledgement is bounded to this notification's ID in its group.
+    public func markUserNotificationRead(id: Int64) async throws {
+        guard id > 0 else { throw AptevaAPIError.invalidResponse }
+        let response: NotificationAcknowledgement = try await request(
+            "notifications/\(id)", method: "PATCH", body: Data(#"{"read":true}"#.utf8)
+        )
+        guard response.ok else { throw AptevaAPIError.invalidResponse }
     }
 
     public func mobilePushSubscriptions() async throws -> [AptevaMobilePushSubscription] {
@@ -543,7 +569,7 @@ public struct AptevaAPIClient: Sendable {
             throw AptevaAPIError.invalidResponse
         }
         let surface: DeclaredNativeSurface = try await request(
-            "apps/\(appName)\(descriptor.entry)?project_id=\(queryValue(projectID))"
+            "apps/\(appName)\(descriptor.entry)?project_id=\(queryValue(projectID))\(appInstallID.map { "&install_id=\($0)" } ?? "")"
         )
         guard surface.schema == descriptor.schema,
               surface.id == descriptor.id,
@@ -742,8 +768,10 @@ public struct AptevaAPIClient: Sendable {
             url.appendPathComponent(String(segment))
         }
         guard var components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return nil }
-        var items = query.map { URLQueryItem(name: $0.key, value: $0.value) }
+        var items = query.filter { $0.key != "project_id" && (appInstallID == nil || $0.key != "install_id") }
+            .map { URLQueryItem(name: $0.key, value: $0.value) }
         items.append(URLQueryItem(name: "project_id", value: projectID))
+        if let appInstallID { items.append(URLQueryItem(name: "install_id", value: String(appInstallID))) }
         components.queryItems = items.sorted { $0.name < $1.name }
         return components.url
     }

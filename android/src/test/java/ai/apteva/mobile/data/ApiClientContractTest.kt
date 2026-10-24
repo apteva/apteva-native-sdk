@@ -9,8 +9,27 @@ import org.junit.Test
 
 class ApiClientContractTest {
     @Test
+    fun genericNotificationFixturePreservesRoutingAndUnreadState() {
+        val fixture = java.io.File("../contract/fixtures/user-notification.json").readText()
+        val notification = ApiClient.json.decodeFromString<UserNotification>(fixture)
+        assertEquals(901L, notification.id)
+        assertEquals(72L, notification.installId)
+        assertEquals("project-b", notification.projectId)
+        assertEquals("conversations", notification.app)
+        assertFalse(notification.read)
+        org.junit.Assert.assertTrue(notification.channels.mobile)
+        org.junit.Assert.assertTrue(notification.url.contains("message_id=42"))
+    }
+
+    @Test
+    fun olderPushConfigDoesNotInventGenericNotificationSupport() {
+        val config = ApiClient.json.decodeFromString<MobilePushConfig>("""{"enabled":true}""")
+        assertFalse(config.supportsAppNotifications)
+        assertEquals(null, config.instanceRef)
+    }
+    @Test
     fun contractVersionMatchesNativeV1Release() {
-        assertEquals("1.2.0", AptevaClientContract.VERSION)
+        assertEquals("1.3.0", AptevaClientContract.VERSION)
     }
 
     @Test

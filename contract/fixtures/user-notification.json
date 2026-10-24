@@ -1,0 +1,13 @@
+{
+  "id": 901,
+  "install_id": 72,
+  "project_id": "project-b",
+  "type": "conversation-alert-created",
+  "app": "conversations",
+  "title": "Alert in Operations",
+  "body": "A service needs attention.",
+  "url": "/apps/conversations/page?project_id=project-b&install_id=72&chat=thread-7&message_id=42",
+  "group": "thread-7",
+  "read": false,
+  "channels": { "in_app": true, "tab": true, "desktop": false, "mobile": true }
+}

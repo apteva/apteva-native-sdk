@@ -1,6 +1,6 @@
 # Native client contract
 
-Contract version: `1.1`
+Contract version: `1.3.0`
 
 This is the stable boundary between an Apteva server and native clients. It is
 not a UI specification.
@@ -66,3 +66,23 @@ MFA is outside this contract.
 - conversations, messages, presence, and user/project/chat SSE;
 - installed apps, marketplace, preflight, lifecycle, and native app traffic;
 - mobile push configuration, subscription, test, and removal.
+
+## Generic user notifications
+
+- `GET /notifications` returns an authoritative unread snapshot;
+  `/notifications/stream` emits the same JSON snapshot as SSE data.
+- `GET /notifications/{id}` fetches an authorized notification, including
+  its app installation, project, and server-generated URL.
+- `PATCH /notifications/{id}` with `{"read":true}` acknowledges that group's
+  notifications only through the opened ID, not newer arrivals.
+- Push `type=notification` identifies this notification ID, never a message ID.
+  Legacy `approval`, `report`, and `alert` retain their existing semantics.
+- Validate optional push `instance_ref` before fetching an instance-local ID.
+  Validate notification links against the selected server, app, project and
+  installation. Never forward a device credential to an arbitrary deep link.
+- Conversations links use `chat` and optional `message_id`; older links without
+  a message ID open the conversation. Fetch older history when necessary and
+  acknowledge only after successful presentation. Missing/deleted targets and
+  authorization failures remain distinguishable from successful opening.
+- Foreground badges reconcile with the server snapshot and its SSE updates;
+  a tap or inbox action must not blindly decrement the authoritative count.

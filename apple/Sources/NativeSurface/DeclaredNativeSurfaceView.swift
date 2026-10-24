@@ -682,12 +682,18 @@ public struct DeclaredNativeSurfaceView: View {
     let appName: String
     let projectID: String
     let client: AptevaAPIClient
+    let chatDeepLink: NativeChatDeepLink?
+    let onNotificationOpened: @MainActor () async -> Void
 
-    public init(descriptor: AptevaNativeSurfaceDescriptor, appName: String, projectID: String, client: AptevaAPIClient) {
+    public init(descriptor: AptevaNativeSurfaceDescriptor, appName: String, projectID: String, client: AptevaAPIClient,
+                chatDeepLink: NativeChatDeepLink? = nil,
+                onNotificationOpened: @escaping @MainActor () async -> Void = {}) {
         self.descriptor = descriptor
         self.appName = appName
         self.projectID = projectID
         self.client = client
+        self.chatDeepLink = chatDeepLink
+        self.onNotificationOpened = onNotificationOpened
     }
 
     @State private var surface: DeclaredNativeSurface?
@@ -696,7 +702,8 @@ public struct DeclaredNativeSurfaceView: View {
     public var body: some View {
         Group {
             if let surface {
-                DeclaredSurfaceContentView(surface: surface, appName: appName, projectID: projectID, client: client)
+                DeclaredSurfaceContentView(surface: surface, appName: appName, projectID: projectID, client: client,
+                                           chatDeepLink: chatDeepLink, onNotificationOpened: onNotificationOpened)
             } else if let errorMessage {
                 ContentUnavailableView {
                     Label("Surface unavailable", systemImage: "exclamationmark.triangle")
@@ -733,6 +740,8 @@ private struct DeclaredSurfaceContentView: View {
     let appName: String
     let projectID: String
     let client: AptevaAPIClient
+    let chatDeepLink: NativeChatDeepLink?
+    let onNotificationOpened: @MainActor () async -> Void
 
     @Environment(\.openURL) private var openURL
     @State private var state: [String: NativeJSONValue]
@@ -747,11 +756,15 @@ private struct DeclaredSurfaceContentView: View {
     @State private var notice: SurfaceNotice?
     @State private var sharePayload: SharePayload?
 
-    init(surface: DeclaredNativeSurface, appName: String, projectID: String, client: AptevaAPIClient) {
+    init(surface: DeclaredNativeSurface, appName: String, projectID: String, client: AptevaAPIClient,
+         chatDeepLink: NativeChatDeepLink? = nil,
+         onNotificationOpened: @escaping @MainActor () async -> Void = {}) {
         self.surface = surface
         self.appName = appName
         self.projectID = projectID
         self.client = client
+        self.chatDeepLink = chatDeepLink
+        self.onNotificationOpened = onNotificationOpened
         _state = State(initialValue: surface.state.mapValues { $0.defaultValue ?? .null })
         let initialSearch = surface.sections.compactMap(\.search).first.flatMap { surface.state[$0.state]?.defaultValue?.scalarString } ?? ""
         _search = State(initialValue: initialSearch)
@@ -760,13 +773,19 @@ private struct DeclaredSurfaceContentView: View {
     var body: some View {
         if let section = surface.sections.first(where: { $0.component == "chat/v1" }),
            let chat = section.chat {
-            DeclaredChatComponentView(
-                surface: surface,
-                configuration: chat,
-                appName: appName,
-                projectID: projectID,
-                client: client
-            )
+            if let chatDeepLink {
+                DeclaredChatThreadView(
+                    surface: surface, configuration: chat,
+                    selection: NativeChatSelection(id: chatDeepLink.conversationID, value: chatDeepLink.conversation),
+                    appName: appName, projectID: projectID, client: client,
+                    targetMessageID: chatDeepLink.messageID,
+                    onNotificationOpened: onNotificationOpened,
+                    onConversationChanged: {}
+                )
+            } else {
+                DeclaredChatComponentView(surface: surface, configuration: chat, appName: appName,
+                                          projectID: projectID, client: client)
+            }
         } else {
             standardSurface
         }
@@ -1354,6 +1373,8 @@ private struct DeclaredChatThreadView: View {
     let projectID: String
     let client: AptevaAPIClient
     let onConversationChanged: () async -> Void
+    let targetMessageID: String?
+    let onNotificationOpened: @MainActor () async -> Void
 
     @State private var state: [String: NativeJSONValue]
     @State private var messages: [NativeJSONValue] = []
@@ -1370,6 +1391,8 @@ private struct DeclaredChatThreadView: View {
     @State private var isLoadingOlder = false
     @State private var isSending = false
     @State private var errorMessage: String?
+    @State private var focusedMessageID: String?
+    @State private var didOpenNotification = false
 
     init(
         surface: DeclaredNativeSurface,
@@ -1378,6 +1401,8 @@ private struct DeclaredChatThreadView: View {
         appName: String,
         projectID: String,
         client: AptevaAPIClient,
+        targetMessageID: String? = nil,
+        onNotificationOpened: @escaping @MainActor () async -> Void = {},
         onConversationChanged: @escaping () async -> Void
     ) {
         self.surface = surface
@@ -1387,6 +1412,8 @@ private struct DeclaredChatThreadView: View {
         self.projectID = projectID
         self.client = client
         self.onConversationChanged = onConversationChanged
+        self.targetMessageID = targetMessageID
+        self.onNotificationOpened = onNotificationOpened
         var initialState = surface.state.mapValues { $0.defaultValue ?? .null }
         initialState[configuration.selectionState] = .string(selection.id)
         _state = State(initialValue: initialState)
@@ -1410,7 +1437,7 @@ private struct DeclaredChatThreadView: View {
     var body: some View {
         VStack(spacing: 0) {
             if let errorMessage {
-                SurfaceRuntimeErrorBanner(message: errorMessage) { Task { await loadMessages() } }
+                SurfaceRuntimeErrorBanner(message: errorMessage) { Task { await openInitialHistory() } }
                     .padding(.horizontal, 12)
                     .padding(.top, 8)
             }
@@ -1447,6 +1474,10 @@ private struct DeclaredChatThreadView: View {
 
                         ForEach(renderedMessages) { message in
                             NativeChatMessageRow(item: message.value, mapping: configuration.message)
+                                .background(message.id == focusedMessageID ? AptevaPalette.accent.opacity(0.12) : .clear,
+                                            in: RoundedRectangle(cornerRadius: 16))
+                                .id(message.id)
+                                .accessibilityIdentifier("chat-message-\(message.id)")
                         }
 
                         NativeChatLiveArea(
@@ -1463,10 +1494,19 @@ private struct DeclaredChatThreadView: View {
                     .padding(14)
                 }
                 .onChange(of: messages.count) { _, _ in
-                    proxy.scrollTo("chat-bottom", anchor: .bottom)
+                    if focusedMessageID == nil && (didOpenNotification || targetMessageID == nil) {
+                        proxy.scrollTo("chat-bottom", anchor: .bottom)
+                    }
                 }
                 .onChange(of: liveScrollKey) { _, _ in
-                    proxy.scrollTo("chat-bottom", anchor: .bottom)
+                    if focusedMessageID == nil && (didOpenNotification || targetMessageID == nil) {
+                        proxy.scrollTo("chat-bottom", anchor: .bottom)
+                    }
+                }
+                .task(id: focusedMessageID) {
+                    guard let focusedMessageID else { return }
+                    await Task.yield()
+                    proxy.scrollTo(focusedMessageID, anchor: .center)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1486,8 +1526,7 @@ private struct DeclaredChatThreadView: View {
         // of the race: events received during a snapshot are preserved, and a
         // stream that connects later reloads anything created in the gap.
         .task(id: "history|\(selection.id)") {
-            await loadMessages()
-            await markSeen()
+            await openInitialHistory()
         }
         .task(id: "subscription|\(selection.id)") {
             await runSubscription()
@@ -1495,12 +1534,39 @@ private struct DeclaredChatThreadView: View {
     }
 
     @MainActor
+    private func openInitialHistory() async {
+        guard await loadMessages() else { return }
+        do {
+            _ = try await nativeChatNotificationHistory(
+                initial: NativeChatHistoryPage(messages: messages, nextCursor: nextCursor),
+                targetMessageID: targetMessageID, idSelector: configuration.message.id
+            ) { cursor in
+                guard await loadMessages(cursor: cursor, prepending: true) else {
+                    throw AptevaAPIError.connection(errorMessage ?? "Could not load message history.")
+                }
+                return NativeChatHistoryPage(messages: messages, nextCursor: nextCursor)
+            }
+        } catch {
+            if !Task.isCancelled { errorMessage = error.localizedDescription }
+            return
+        }
+        guard !Task.isCancelled else { return }
+        focusedMessageID = targetMessageID
+        await markSeen()
+        if !didOpenNotification {
+            didOpenNotification = true
+            await onNotificationOpened()
+        }
+    }
+
+    @MainActor
+    @discardableResult
     private func loadMessages(
         cursor: String? = nil,
         prepending: Bool = false,
         quietly: Bool = false
-    ) async {
-        guard let source = surface.dataSources[configuration.messagesSource] else { return }
+    ) async -> Bool {
+        guard let source = surface.dataSources[configuration.messagesSource] else { return false }
         if prepending {
             isLoadingOlder = true
         } else if !quietly {
@@ -1544,8 +1610,10 @@ private struct DeclaredChatThreadView: View {
             let cursorSelector = source.response.nextCursor ?? source.pagination?.responsePath
             nextCursor = cursorSelector.flatMap { response.value(at: $0)?.scalarString }.flatMap { $0.isEmpty ? nil : $0 }
             errorMessage = nil
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -1561,6 +1629,7 @@ private struct DeclaredChatThreadView: View {
               !isSending,
               let action = surface.actions[configuration.sendAction] else { return }
         isSending = true
+        focusedMessageID = nil
         // The composer already communicates the in-flight POST. Do not show
         // Thinking until the server acknowledges that an agent turn started.
         isAwaitingResponse = false

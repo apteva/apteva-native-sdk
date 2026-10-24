@@ -309,6 +309,39 @@ data class InboxItem(
 data class MobilePushConfig(
     val enabled: Boolean = false,
     @SerialName("supports_background_refresh") val supportsBackgroundRefresh: Boolean = false,
+    @SerialName("supports_app_notifications") val supportsAppNotifications: Boolean = false,
+    @SerialName("instance_ref") val instanceRef: String? = null,
+)
+
+@Serializable
+data class NotificationChannels(
+    @SerialName("in_app") val inApp: Boolean,
+    val tab: Boolean,
+    val desktop: Boolean,
+    val mobile: Boolean,
+)
+
+@Serializable
+data class UserNotification(
+    val id: Long,
+    @SerialName("install_id") val installId: Long,
+    @SerialName("project_id") val projectId: String,
+    val type: String,
+    val app: String,
+    val title: String,
+    val body: String,
+    val url: String,
+    val group: String,
+    val read: Boolean,
+    val channels: NotificationChannels,
+)
+
+@Serializable
+data class NotificationSnapshot(
+    val items: List<UserNotification>,
+    @SerialName("unread_count") val unreadCount: Int,
+    @SerialName("tab_count") val tabCount: Int,
+    @SerialName("next_before") val nextBefore: Long,
 )
 
 @Serializable
