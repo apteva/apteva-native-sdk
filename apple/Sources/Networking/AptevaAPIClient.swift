@@ -189,8 +189,9 @@ public struct AptevaAPIClient: Sendable {
         try await request("mobile/push/config")
     }
 
-    public func userNotifications() async throws -> AptevaNotificationSnapshot {
-        try await request("notifications")
+    public func userNotifications(before: Int64? = nil) async throws -> AptevaNotificationSnapshot {
+        if let before, before <= 0 { throw AptevaAPIError.invalidResponse }
+        return try await request("notifications\(before.map { "?before=\($0)" } ?? "")")
     }
 
     public func userNotification(id: Int64) async throws -> AptevaUserNotification {
@@ -200,9 +201,19 @@ public struct AptevaAPIClient: Sendable {
 
     /// Server acknowledgement is bounded to this notification's ID in its group.
     public func markUserNotificationRead(id: Int64) async throws {
+        try await updateUserNotification(id: id, dismiss: false)
+    }
+
+    /// Dismisses notification records, not the originating conversation/message.
+    public func dismissUserNotification(id: Int64) async throws {
+        try await updateUserNotification(id: id, dismiss: true)
+    }
+
+    private func updateUserNotification(id: Int64, dismiss: Bool) async throws {
         guard id > 0 else { throw AptevaAPIError.invalidResponse }
         let response: NotificationAcknowledgement = try await request(
-            "notifications/\(id)", method: "PATCH", body: Data(#"{"read":true}"#.utf8)
+            "notifications/\(id)", method: "PATCH",
+            body: try JSONEncoder().encode(["read": true, "dismiss": dismiss])
         )
         guard response.ok else { throw AptevaAPIError.invalidResponse }
     }

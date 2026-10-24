@@ -39,6 +39,8 @@ public struct AptevaUserNotification: Decodable, Identifiable, Hashable, Sendabl
     public let projectID: String
     public let type: String
     public let app: String
+    public let appName: String?
+    public let createdAt: String?
     public let title: String
     public let body: String
     public let url: String
@@ -48,6 +50,7 @@ public struct AptevaUserNotification: Decodable, Identifiable, Hashable, Sendabl
     enum CodingKeys: String, CodingKey {
         case id, type, app, title, body, url, group, read, channels
         case installID = "install_id", projectID = "project_id"
+        case appName = "app_name", createdAt = "created_at"
     }
 
     /// Validate server-returned routing before selecting a native app/project.

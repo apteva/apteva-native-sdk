@@ -334,6 +334,8 @@ data class UserNotification(
     val group: String,
     val read: Boolean,
     val channels: NotificationChannels,
+    @SerialName("app_name") val appName: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
 )
 
 @Serializable

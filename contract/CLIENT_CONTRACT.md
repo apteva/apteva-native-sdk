@@ -1,6 +1,6 @@
 # Native client contract
 
-Contract version: `1.3.1`
+Contract version: `1.3.2`
 
 This is the stable boundary between an Apteva server and native clients. It is
 not a UI specification.
@@ -75,6 +75,11 @@ MFA is outside this contract.
   its app installation, project, and server-generated URL.
 - `PATCH /notifications/{id}` with `{"read":true}` acknowledges that group's
   notifications only through the opened ID, not newer arrivals.
+- Listing accepts `before` for older notification pages. Dismissal sends
+  `{"read":true,"dismiss":true}` to the same PATCH endpoint and never deletes
+  source app content. Client bulk actions capture an upper ID before network
+  work, traverse older pages and acknowledge once per installation/project/group;
+  they must not mark newer arrivals read or fake a zero badge on failed writes.
 - Push `type=notification` identifies this notification ID, never a message ID.
   Legacy `approval`, `report`, and `alert` retain their existing semantics.
 - Validate optional push `instance_ref` before fetching an instance-local ID.

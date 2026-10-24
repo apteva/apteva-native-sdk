@@ -12,7 +12,7 @@ For released Apple apps, reference the exact Git package version in XcodeGen:
 packages:
   AptevaNativeSDK:
     url: https://github.com/apteva/apteva-native-sdk.git
-    exactVersion: 1.3.1
+    exactVersion: 1.3.2
 ```
 
 iOS/iPadOS targets depend on products `AptevaNativeSDK` and
@@ -23,7 +23,7 @@ For SDK development only, use `path: ../apteva-native-sdk` instead.
 
 ## Android
 
-The app declares `implementation("ai.apteva:native-sdk:1.3.1")`. Its
+The app declares `implementation("ai.apteva:native-sdk:1.3.2")`. Its
 `settings.gradle.kts` substitutes the sibling SDK checkout for that coordinate
 when present. Without the sibling checkout, configure a Maven repository URL
 with `aptevaSdkMavenUrl` or `APTEVA_SDK_MAVEN_URL`. For a private repository,

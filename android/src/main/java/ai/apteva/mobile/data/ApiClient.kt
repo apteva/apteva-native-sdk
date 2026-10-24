@@ -267,7 +267,10 @@ class ApiClient(
     }
 
     suspend fun mobilePushConfig(): MobilePushConfig = get("mobile/push/config")
-    suspend fun userNotifications(): NotificationSnapshot = get("notifications")
+    suspend fun userNotifications(before: Long? = null): NotificationSnapshot {
+        require(before == null || before > 0)
+        return get("notifications" + (before?.let { "?before=$it" } ?: ""))
+    }
     suspend fun userNotification(id: Long): UserNotification {
         require(id > 0)
         return get("notifications/$id")
@@ -275,6 +278,10 @@ class ApiClient(
     suspend fun markUserNotificationRead(id: Long) {
         require(id > 0)
         execute("PATCH", "notifications/$id", """{"read":true}""")
+    }
+    suspend fun dismissUserNotification(id: Long) {
+        require(id > 0)
+        execute("PATCH", "notifications/$id", """{"read":true,"dismiss":true}""")
     }
     suspend fun mobilePushSubscriptions(): List<MobilePushSubscription> =
         get<MobilePushSubscriptionsResponse>("mobile/push/subscriptions").subscriptions

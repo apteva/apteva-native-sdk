@@ -75,7 +75,7 @@ final class UserNotificationTests: XCTestCase {
             case ("GET", "/api/notifications/901"): data = bytes
             case ("PATCH", "/api/notifications/901"):
                 let body = try Self.body(request)
-                XCTAssertEqual(try JSONSerialization.jsonObject(with: body) as? [String: Bool], ["read": true])
+                XCTAssertEqual(try JSONSerialization.jsonObject(with: body) as? [String: Bool], ["read": true, "dismiss": false])
                 data = Data(#"{"ok":true}"#.utf8)
             case ("GET", "/api/notifications"):
                 data = Data(#"{"items":[],"unread_count":3,"tab_count":2,"next_before":0}"#.utf8)
@@ -97,6 +97,22 @@ final class UserNotificationTests: XCTestCase {
         let items = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
         XCTAssertEqual(items.filter { $0.name == "install_id" }.map(\.value), ["72"])
         XCTAssertEqual(items.filter { $0.name == "project_id" }.map(\.value), ["project-b"])
+    }
+
+    func testNotificationPaginationAndDismissUseServerAPIs() async throws {
+        NotificationURLProtocol.handler = { request in
+            if request.httpMethod == "GET" {
+                XCTAssertEqual(request.url?.query, "before=123")
+                return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(#"{"items":[],"unread_count":0,"tab_count":0,"next_before":0}"#.utf8))
+            }
+            XCTAssertEqual(request.httpMethod, "PATCH")
+            XCTAssertEqual(request.url?.path, "/api/notifications/99")
+            XCTAssertEqual(try JSONSerialization.jsonObject(with: Self.body(request)) as? [String: Bool], ["read": true, "dismiss": true])
+            return (HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!, Data(#"{"ok":true}"#.utf8))
+        }
+        let client = AptevaAPIClient(baseURL: base, protocolClasses: [NotificationURLProtocol.self])
+        _ = try await client.userNotifications(before: 123)
+        try await client.dismissUserNotification(id: 99)
     }
 
     @MainActor
