@@ -7,7 +7,7 @@ import XCTest
 
 final class APIKeyAuthenticationTests: XCTestCase {
     func testContractVersionMatchesTheComposableChatRelease() {
-        XCTAssertEqual(AptevaClientContract.version, "1.3.0")
+        XCTAssertEqual(AptevaClientContract.version, "1.3.1")
     }
 
     func testServerURLNormalizationEnforcesTheSharedSecurityBoundary() throws {

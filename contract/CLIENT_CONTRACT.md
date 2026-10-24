@@ -1,6 +1,6 @@
 # Native client contract
 
-Contract version: `1.3.0`
+Contract version: `1.3.1`
 
 This is the stable boundary between an Apteva server and native clients. It is
 not a UI specification.

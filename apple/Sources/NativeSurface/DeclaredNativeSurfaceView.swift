@@ -86,10 +86,17 @@ public func nativeChatMergingSnapshot(
     preserving live: [NativeJSONValue],
     idSelector: String
 ) -> [NativeJSONValue] {
+    let snapshotIDs = Set(snapshot.map { nativeChatMessageID($0, selector: idSelector) })
+    let overlap = live.firstIndex { snapshotIDs.contains(nativeChatMessageID($0, selector: idSelector)) } ?? 0
+    // A reconnect snapshot contains the newest page, not the entire transcript.
+    // Keep already-loaded older history before that page instead of appending
+    // it after the latest turns. Live values still win for overlapping IDs.
+    let olderHistory = Array(live.prefix(overlap))
+    let liveTail = Array(live.dropFirst(overlap))
     var merged: [NativeJSONValue] = []
     var indexByID: [String: Int] = [:]
 
-    for message in snapshot + live {
+    for message in olderHistory + snapshot + liveTail {
         let id = nativeChatMessageID(message, selector: idSelector)
         guard !id.isEmpty else { continue }
         if let index = indexByID[id] {

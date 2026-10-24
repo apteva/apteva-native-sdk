@@ -134,6 +134,12 @@ final class UserNotificationTests: XCTestCase {
 
     private func row(_ id: String) -> NativeJSONValue { .object(["id": .string(id)]) }
 
+    func testReconnectSnapshotDoesNotMoveOlderFocusedHistoryAfterLatestPage() {
+        let history = [row("41"), row("42"), row("43"), row("44"), row("45")]
+        let merged = nativeChatMergingSnapshot([row("44"), row("45")], preserving: history, idSelector: "$.id")
+        XCTAssertEqual(merged.map { nativeChatMessageID($0, selector: "$.id") }, ["41", "42", "43", "44", "45"])
+    }
+
     private static func body(_ request: URLRequest) throws -> Data {
         if let body = request.httpBody { return body }
         let stream = try XCTUnwrap(request.httpBodyStream)
