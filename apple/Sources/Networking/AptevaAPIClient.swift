@@ -194,6 +194,16 @@ public struct AptevaAPIClient: Sendable {
         return try await request("notifications\(before.map { "?before=\($0)" } ?? "")")
     }
 
+    public func notificationPreviewPreferences() async throws -> AptevaNotificationPreviewPreferences {
+        try await request("notifications/previews")
+    }
+
+    @discardableResult
+    public func setNotificationPreviewMode(_ mode: AptevaNotificationPreviewMode) async throws -> AptevaNotificationPreviewPreferences {
+        try await request("notifications/previews", method: "PUT",
+                          body: JSONEncoder().encode(AptevaNotificationPreviewPreferences(mobilePreview: mode)))
+    }
+
     public func userNotification(id: Int64) async throws -> AptevaUserNotification {
         guard id > 0 else { throw AptevaAPIError.invalidResponse }
         return try await request("notifications/\(id)")

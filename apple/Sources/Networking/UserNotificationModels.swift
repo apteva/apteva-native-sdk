@@ -1,6 +1,16 @@
 import Foundation
 import CoreFoundation
 
+public enum AptevaNotificationPreviewMode: String, Codable, Sendable {
+    case hidden, content
+}
+
+public struct AptevaNotificationPreviewPreferences: Codable, Hashable, Sendable {
+    public let mobilePreview: AptevaNotificationPreviewMode
+    public init(mobilePreview: AptevaNotificationPreviewMode = .hidden) { self.mobilePreview = mobilePreview }
+    enum CodingKeys: String, CodingKey { case mobilePreview = "mobile_preview" }
+}
+
 /// A push carries an opaque server notification ID, not a conversation message ID.
 public struct AptevaPushDestination: Identifiable, Hashable, Sendable {
     public let id = UUID()

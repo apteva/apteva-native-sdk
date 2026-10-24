@@ -2,5 +2,5 @@ package ai.apteva.mobile.data
 
 /** Version of the server/client behavior contract implemented by this library. */
 object AptevaClientContract {
-    const val VERSION = "1.3.2"
+    const val VERSION = "1.4.0"
 }

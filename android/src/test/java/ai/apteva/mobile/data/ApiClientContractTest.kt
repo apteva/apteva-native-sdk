@@ -9,6 +9,13 @@ import org.junit.Test
 
 class ApiClientContractTest {
     @Test
+    fun previewPreferencesDefaultToPrivateAndRoundTrip() {
+        assertEquals(NotificationPreviewMode.Hidden, NotificationPreviewPreferences().mobilePreview)
+        val enabled = ApiClient.json.decodeFromString<NotificationPreviewPreferences>("""{"mobile_preview":"content"}""")
+        assertEquals(NotificationPreviewMode.Content, enabled.mobilePreview)
+        assertFalse(ApiClient.json.decodeFromString<MobilePushConfig>("""{"enabled":true}""").supportsNotificationPreviews)
+    }
+    @Test
     fun genericNotificationFixturePreservesRoutingAndUnreadState() {
         val fixture = java.io.File("../contract/fixtures/user-notification.json").readText()
         val notification = ApiClient.json.decodeFromString<UserNotification>(fixture)
@@ -29,7 +36,7 @@ class ApiClientContractTest {
     }
     @Test
     fun contractVersionMatchesNativeV1Release() {
-        assertEquals("1.3.2", AptevaClientContract.VERSION)
+        assertEquals("1.4.0", AptevaClientContract.VERSION)
     }
 
     @Test

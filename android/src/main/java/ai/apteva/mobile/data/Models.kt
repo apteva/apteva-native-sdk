@@ -310,7 +310,16 @@ data class MobilePushConfig(
     val enabled: Boolean = false,
     @SerialName("supports_background_refresh") val supportsBackgroundRefresh: Boolean = false,
     @SerialName("supports_app_notifications") val supportsAppNotifications: Boolean = false,
+    @SerialName("supports_notification_previews") val supportsNotificationPreviews: Boolean = false,
     @SerialName("instance_ref") val instanceRef: String? = null,
+)
+
+@Serializable
+enum class NotificationPreviewMode { @SerialName("hidden") Hidden, @SerialName("content") Content }
+
+@Serializable
+data class NotificationPreviewPreferences(
+    @SerialName("mobile_preview") val mobilePreview: NotificationPreviewMode = NotificationPreviewMode.Hidden,
 )
 
 @Serializable

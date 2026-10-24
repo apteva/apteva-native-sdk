@@ -1,6 +1,12 @@
 # Native client contract
 
-Contract version: `1.3.2`
+Contract version: `1.4.0`
+
+Notification preview preferences use `GET`/`PUT /api/notifications/previews` with
+`{"mobile_preview":"hidden"}` or `{"mobile_preview":"content"}`. Preview
+support is advertised by `supports_notification_previews` in mobile push config.
+An older server omits that capability. Preview text is not trusted for routing;
+clients continue fetching the notification by ID with their user credential.
 
 This is the stable boundary between an Apteva server and native clients. It is
 not a UI specification.

@@ -267,6 +267,11 @@ class ApiClient(
     }
 
     suspend fun mobilePushConfig(): MobilePushConfig = get("mobile/push/config")
+    suspend fun notificationPreviewPreferences(): NotificationPreviewPreferences = get("notifications/previews")
+    suspend fun setNotificationPreviewMode(mode: NotificationPreviewMode): NotificationPreviewPreferences {
+        val body = json.encodeToString(NotificationPreviewPreferences.serializer(), NotificationPreviewPreferences(mode))
+        return json.decodeFromString(execute("PUT", "notifications/previews", body))
+    }
     suspend fun userNotifications(before: Long? = null): NotificationSnapshot {
         require(before == null || before > 0)
         return get("notifications" + (before?.let { "?before=$it" } ?: ""))

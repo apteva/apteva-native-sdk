@@ -64,6 +64,25 @@ final class UserNotificationTests: XCTestCase {
         let config = try JSONDecoder().decode(AptevaMobilePushConfig.self, from: Data(#"{"enabled":true}"#.utf8))
         XCTAssertFalse(config.supportsAppNotifications)
         XCTAssertNil(config.instanceRef)
+        XCTAssertFalse(config.supportsNotificationPreviews)
+    }
+
+    func testPreviewPreferenceUsesSeparateAuthenticatedEndpoint() async throws {
+        NotificationURLProtocol.handler = { request in
+            XCTAssertEqual(request.url?.path, "/api/notifications/previews")
+            XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer preview-device")
+            if request.httpMethod == "PUT" {
+                XCTAssertEqual(try JSONSerialization.jsonObject(with: Self.body(request)) as? [String:String], ["mobile_preview":"content"])
+                return (HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!,Data(#"{"mobile_preview":"content"}"#.utf8))
+            }
+            return (HTTPURLResponse(url:request.url!,statusCode:200,httpVersion:nil,headerFields:nil)!,Data(#"{"mobile_preview":"hidden"}"#.utf8))
+        }
+        let client = AptevaAPIClient(baseURL:base,bearerToken:"preview-device",protocolClasses:[NotificationURLProtocol.self])
+        let hidden = try await client.notificationPreviewPreferences()
+        XCTAssertEqual(hidden.mobilePreview,.hidden)
+        let visible = try await client.setNotificationPreviewMode(.content)
+        XCTAssertEqual(visible.mobilePreview,.content)
+        XCTAssertEqual(AptevaNotificationPreviewPreferences().mobilePreview,.hidden)
     }
 
     func testNotificationFetchSnapshotAndBoundedAcknowledgementUseBearer() async throws {

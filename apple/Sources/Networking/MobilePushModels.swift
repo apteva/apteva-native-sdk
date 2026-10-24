@@ -4,12 +4,14 @@ public struct AptevaMobilePushConfig: Decodable, Sendable {
     public let enabled: Bool
     public let supportsBackgroundRefresh: Bool
     public let supportsAppNotifications: Bool
+    public let supportsNotificationPreviews: Bool
     public let instanceRef: String?
 
     public enum CodingKeys: String, CodingKey {
         case enabled
         case supportsBackgroundRefresh = "supports_background_refresh"
         case supportsAppNotifications = "supports_app_notifications"
+        case supportsNotificationPreviews = "supports_notification_previews"
         case instanceRef = "instance_ref"
     }
 
@@ -18,6 +20,7 @@ public struct AptevaMobilePushConfig: Decodable, Sendable {
         enabled = try values.decode(Bool.self, forKey: .enabled)
         supportsBackgroundRefresh = try values.decodeIfPresent(Bool.self, forKey: .supportsBackgroundRefresh) ?? false
         supportsAppNotifications = try values.decodeIfPresent(Bool.self, forKey: .supportsAppNotifications) ?? false
+        supportsNotificationPreviews = try values.decodeIfPresent(Bool.self, forKey: .supportsNotificationPreviews) ?? false
         instanceRef = try values.decodeIfPresent(String.self, forKey: .instanceRef)
     }
 }
