@@ -1518,6 +1518,7 @@ private struct DeclaredChatThreadView: View {
                     }
                     .padding(14)
                 }
+                .scrollDismissesKeyboard(.interactively)
                 .onChange(of: messages.count) { _, _ in
                     if focusedMessageID == nil && (didOpenNotification || targetMessageID == nil) {
                         proxy.scrollTo("chat-bottom", anchor: .bottom)
@@ -1536,11 +1537,12 @@ private struct DeclaredChatThreadView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .layoutPriority(1)
-
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             NativeChatComposer(text: $draft, isSending: isSending) { await send() }
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AptevaPalette.background)
         .accessibilityIdentifier("chat-thread-\(selection.id)")
         .navigationTitle(title)
@@ -2273,13 +2275,12 @@ private struct NativeChatComposer: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
+        HStack(alignment: .center, spacing: 8) {
             TextField("Message", text: $text, axis: .vertical)
+                .font(.body)
                 .lineLimit(1...6)
-                .padding(.leading, 17)
-                .padding(.trailing, 62)
-                .padding(.vertical, 16)
-                .frame(minHeight: 92, alignment: .topLeading)
+                .padding(.leading, 14)
+                .padding(.vertical, 8)
                 .accessibilityIdentifier("chat-message-input")
 
             Button {
@@ -2294,23 +2295,21 @@ private struct NativeChatComposer: View {
                         .foregroundStyle(canSend ? Color.white : AptevaPalette.dim)
                 }
             }
-            .frame(width: 44, height: 44)
+            .frame(width: 36, height: 36)
             .background(canSend || isSending ? AptevaPalette.accent : Color.white.opacity(0.1), in: Circle())
-            .padding(7)
+            .frame(width: 44, height: 44)
+            .contentShape(Circle())
             .buttonStyle(.plain)
             .disabled(!canSend)
             .accessibilityLabel("Send message")
             .accessibilityIdentifier("chat-send-button")
         }
-        .background(AptevaPalette.raised, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        }
+        .padding(.trailing, 4)
+        .padding(.vertical, 4)
+        .glassEffect(.regular, in: .rect(cornerRadius: 26))
         .padding(.horizontal, 12)
         .padding(.top, 8)
         .padding(.bottom, 10)
-        .background(AptevaPalette.background)
     }
 }
 

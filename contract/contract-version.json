@@ -1,6 +1,6 @@
 {
   "schema": "apteva-native-client-contract/v1",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "api_base_path": "/api/",
   "authentication": "private-device-bearer-key",
   "requires_https": true,

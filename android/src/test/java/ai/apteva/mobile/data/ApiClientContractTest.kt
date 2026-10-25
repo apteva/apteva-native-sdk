@@ -36,7 +36,7 @@ class ApiClientContractTest {
     }
     @Test
     fun contractVersionMatchesNativeV1Release() {
-        assertEquals("1.5.0", AptevaClientContract.VERSION)
+        assertEquals("1.5.1", AptevaClientContract.VERSION)
     }
 
     @Test

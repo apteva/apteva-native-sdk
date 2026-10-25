@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.1
+
+- Apple: make the native chat composer one line by default, expanding with its message.
+- Use native Liquid Glass with a transparent surrounding inset instead of an opaque input panel.
+- Keep accessible send targets and interactive keyboard dismissal.
+- Wire behavior and Android rendering remain unchanged.
+
 ## 1.5.0
 
 - Render native Conversations alert, approval, report and interactive question cards.
