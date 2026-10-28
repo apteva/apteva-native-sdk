@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.2
+
+- Expose the existing native alert, report, approval and question card view to macOS hosts.
+- Share action validation, destructive confirmations and server-owned decision display across Apple platforms.
+- Preserve existing iOS and Android wire behavior.
+
 ## 1.5.1
 
 - Apple: make the native chat composer one line by default, expanding with its message.

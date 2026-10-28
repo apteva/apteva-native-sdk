@@ -1,4 +1,4 @@
-#if canImport(UIKit)
+#if canImport(SwiftUI)
 import SwiftUI
 
 // The native-surface renderer is packaged independently from the application.

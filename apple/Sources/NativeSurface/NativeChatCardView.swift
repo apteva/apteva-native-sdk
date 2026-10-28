@@ -1,7 +1,7 @@
-#if canImport(UIKit)
+#if canImport(SwiftUI)
 import SwiftUI
 
-struct NativeChatCardView: View {
+public struct NativeChatCardView: View {
     let card: NativeChatCard
     let canRespond: Bool
     let submit: (NativeChatCardAction, [String: NativeJSONValue], String) async throws -> Void
@@ -11,6 +11,13 @@ struct NativeChatCardView: View {
     @State private var busy = false
     @State private var error: String?
     @State private var confirmation: NativeChatCardAction?
+
+    public init(card: NativeChatCard, canRespond: Bool,
+                submit: @escaping (NativeChatCardAction, [String: NativeJSONValue], String) async throws -> Void) {
+        self.card = card
+        self.canRespond = canRespond
+        self.submit = submit
+    }
 
     private var tone: Color {
         switch card.kind {
@@ -30,7 +37,7 @@ struct NativeChatCardView: View {
         }
     }
 
-    var body: some View {
+    public var body: some View {
         TimelineView(.periodic(from: .now, by: 30)) { context in
             let pending = card.isPending(now: context.date)
             VStack(alignment: .leading, spacing: 12) {

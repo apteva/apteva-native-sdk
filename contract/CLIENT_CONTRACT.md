@@ -1,6 +1,6 @@
 # Native client contract
 
-Contract version: `1.5.1`
+Contract version: `1.5.2`
 
 Native chat cards retain their existing v1 message component format. Optional
 `chat.message_action` selects a declared action endpoint; existing Conversations
